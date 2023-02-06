@@ -1,8 +1,6 @@
 from datetime import datetime
 from pymongo import MongoClient
 
-import logging, json
-
 class Data:
 
     def __init__(self, pipe, db_conf, database, collection, batch_size):

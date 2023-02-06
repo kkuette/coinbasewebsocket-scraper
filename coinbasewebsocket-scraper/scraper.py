@@ -62,7 +62,7 @@ class Scraper(WebsocketClient):
 
 if __name__ == "__main__":
     import logging, json, sys, time
-    conf = '/secrets/conf.json'
+    conf = 'secrets/conf.json' if not sys.argv[1] else sys.argv[1]
     with open(conf) as fp:
         full_conf = json.load(fp)
         database_conf = full_conf['database']
