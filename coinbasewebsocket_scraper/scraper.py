@@ -34,7 +34,7 @@ class Scraper(WebsocketClient):
         if 'product_id' in msg:
             self.messages[msg['product_id']][-1] += 1
             self.pipes[msg['product_id']].send(msg)
-            if time.time() - self.time > 1:
+            if time.time() - self.time > 60:
                 logging.info("Total messages received: {}".format(sum([value[-1] for value in self.messages.values()])))
                 for product in self.products:
                     self.average_messages[product] = int(sum(self.messages[product]) / len(self.messages[product]))
@@ -64,7 +64,7 @@ class Scraper(WebsocketClient):
 
 if __name__ == "__main__":
     import logging, json, sys, time
-    conf = 'secrets/conf.json' if len(sys.argv) == 1 else sys.argv[1]
+    conf = '/secrets/conf.json' if len(sys.argv) == 1 else sys.argv[1]
     with open(conf) as fp:
         full_conf = json.load(fp)
         database_conf = full_conf['database']
