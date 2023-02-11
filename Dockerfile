@@ -14,5 +14,5 @@ ENV PATH /opt/conda/envs/web/bin:$PATH
 
 COPY . .
 
-CMD ["python", "coinbasewebsocket-scraper/scraper.py"]
+CMD ["python", "coinbasewebsocket_scraper/scraper.py"]
 
