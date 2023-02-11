@@ -3,7 +3,7 @@ FROM continuumio/miniconda3
 VOLUME /secrets
 
 # Set the working directory
-WORKDIR /coinbasewebsocket-scraper
+WORKDIR /coinbasewebsocket_scraper
 
 COPY environment.yml .
 RUN conda env create -f environment.yml

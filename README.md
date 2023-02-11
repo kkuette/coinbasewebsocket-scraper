@@ -24,11 +24,11 @@ pip3 install -r requirements.txt
     - database_name: "coinbase"  (*Optionnal*)
     - products: ["BTC-USD", "ETH-USD"]
 
-You can also directly use the docker image: kkuette/coinbasewebsocket-scraper
+You can also directly use the docker image: kkuette/coinbasewebsocketscraper
 It need a conf.json file to be mounted in the container.
 
 ```bash
-docker run --rm -v /path/to/conf.json:/secrets kkuette/coinbasewebsocket-scraper:latest
+docker run --rm -v /path/to/conf.json:/secrets kkuette/coinbasewebsocketscraper:latest
 ```
 
 ## Usage
