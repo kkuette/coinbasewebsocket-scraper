@@ -1,4 +1,4 @@
-from multiprocessing import Pipe, Process
+from multiprocessing import Pipe, Process, cpu_count
 
 from data import Data
 from websocketclient import WebsocketClient
@@ -6,7 +6,7 @@ from collections import deque
 
 class Scraper(WebsocketClient):
 
-    def __init__(self, db_conf, database, batch_size=1, products=None):
+    def __init__(self, db_conf, database, batch_size=100, products=None):
         self.db_conf = db_conf
         self.database = database
         self.products = products
@@ -15,14 +15,17 @@ class Scraper(WebsocketClient):
         self.messages = {}
         self.average_messages = {}
         self.processes = []
+        self.max_processes = cpu_count() if cpu_count() < len(self.products) else len(self.products)
         super().__init__(products=self.products)
 
     def create_processes(self):
-        for product in self.products:
-            self.pipes[product], rcv = Pipe()
-            self.messages[product] = deque([0], maxlen=60)
-            self.average_messages[product] = 0
-            self.processes.append(Process(target=Data, args=(rcv, self.db_conf, self.database, product, self.batch_size)))
+        logging.debug("Creating {} processes...".format(self.max_processes))
+        for process in range(self.max_processes):
+            snd, rcv = Pipe()
+            self.pipes.update(dict.fromkeys(self.products[process::self.max_processes], snd))
+            self.messages.update(dict.fromkeys(self.products[process::self.max_processes], deque([0], maxlen=60)))
+            self.average_messages.update(dict.fromkeys(self.products[process::self.max_processes], 0))
+            self.processes.append(Process(target=Data, args=(rcv, self.db_conf, self.database, self.products[process::self.max_processes], self.batch_size)))
             self.processes[-1].start()
 
     def on_message(self, msg):
@@ -31,13 +34,12 @@ class Scraper(WebsocketClient):
         if 'product_id' in msg:
             self.messages[msg['product_id']][-1] += 1
             self.pipes[msg['product_id']].send(msg)
-            if time.time() - self.time > 60:
+            if time.time() - self.time > 1:
                 logging.info("Total messages received: {}".format(sum([value[-1] for value in self.messages.values()])))
                 for product in self.products:
                     self.average_messages[product] = int(sum(self.messages[product]) / len(self.messages[product]))
                     self.messages[product].append(0)
                 self.time = time.time()
-
 
     def close(self):
         logging.debug("Terminating processes...")
@@ -62,13 +64,15 @@ class Scraper(WebsocketClient):
 
 if __name__ == "__main__":
     import logging, json, sys, time
-    conf = 'secrets/conf.json' if not sys.argv[1] else sys.argv[1]
+    conf = 'secrets/conf.json' if len(sys.argv) == 1 else sys.argv[1]
     with open(conf) as fp:
         full_conf = json.load(fp)
         database_conf = full_conf['database']
         db_name = full_conf['database_name'] if 'database_name' in full_conf else 'coinbase'
         product_conf = full_conf['products']
         fp.close()
+
+    # Set logging configuration
 
     logging.basicConfig(
         format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
