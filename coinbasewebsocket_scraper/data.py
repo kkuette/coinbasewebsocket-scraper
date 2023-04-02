@@ -1,17 +1,18 @@
 from datetime import datetime
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 from threading import Thread, Event
 from copy import deepcopy
-import logging
+import logging, time
 
 class Data:
 
     def __init__(self, pipe, db_conf, database, collections, batch_size):
         self.pipe = pipe
         if type(db_conf) == dict:
-            self.client = MongoClient(**db_conf)
+            self.client = MongoClient(**db_conf, serverSelectionTimeoutMS=100, connectTimeoutMS=5000)
         elif type(db_conf) == str:
-            self.client = MongoClient(db_conf)
+            self.client = MongoClient(db_conf, serverSelectionTimeoutMS=100, connectTimeoutMS=5000)
         self.database = database
         self.collections = collections
         self.batch_size = batch_size
@@ -49,11 +50,19 @@ class Data:
             self.events[product_id].wait()
             self.events[product_id].clear()
             data = deepcopy(self.data[product_id])
-            if self.batch_size == 1:
-                self.client[self.database][product_id].insert_one(data)
-            else:
-                self.data[product_id] = []
-                self.client[self.database][product_id].insert_many(data)
+            try:
+                if not data or len(data) == 0:
+                    continue
+                elif self.batch_size == 1:
+                    self.client[self.database][product_id].insert_one(data)
+                else:
+                    self.data[product_id] = []
+                    self.client[self.database][product_id].insert_many(data)
+            except ServerSelectionTimeoutError:
+                logging.error("ServerSelectionTimeoutError: {}".format(product_id))
+                self.events[product_id].set()
+                time.sleep(1)
+                continue
                 
 
     def listen(self):
